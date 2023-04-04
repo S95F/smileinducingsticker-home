@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/tenexqmh/smileinducingsticker.com/
+    - /bin/cp -R html/css $DEPLOYPATH
+    - /bin/cp -R html/imgs $DEPLOYPATH
+    - /bin/cp html/index.html $DEPLOYPATH

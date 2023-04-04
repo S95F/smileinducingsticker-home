@@ -1,0 +1,119 @@
+
+
+@font-face {
+  font-family: 'gss';
+  src: url('../fonts/Glossy Sheen Shine.ttf');
+}
+
+body{
+	height:100vh;
+	width:100vw;
+	margin:0;
+	background:url('../imgs/bg.png');
+	background-repeat: no-repeat;
+	background-size: cover;
+	overflow:hidden;
+}
+#icon{
+	background: url('../imgs/Madness_cartoon_style_white_wall_covered_in_random_stickers_of__09cf3b17-209d-4832-9782-c60819eac52d.png') center;
+	background-repeat: no-repeat;
+	background-size: contain;
+	width:10vh;
+	border-radius:5vh;
+	margin-top:1vh;
+}
+
+.container{
+	height:100vh;
+	width:100vw;
+	display:flex;
+	flex-direction:column;
+	align-content:center;
+	justify-content:Center;
+}
+
+.header{
+	display:flex;
+	height:10vh;
+	color:white;
+	user-select:none;
+	justify-content:center;
+}
+#ourname{
+	font-family:'gss';
+	font-size:10vh;
+}
+.innerBody{
+	display:flex;
+	height:80vh;
+	font-family:'gss';
+	font-size:2.25vh;
+	color:rgb(.4,.4,.4);
+	user-select:none;
+}
+#home{
+	display:flex;
+	flex-direction:row;
+}
+#home > *{
+	display:flex;
+}
+#biography{
+	margin-top:5vh;
+	flex-basis:65vw;
+}
+#imgs {
+	margin-left:5vw;
+	flex-basis:23vw;
+	flex-direction:column;
+	justify-content:center;
+	align-items:center;
+}
+#myimg{
+	height:55vh;
+	width:100%;
+	background: url('../imgs/me.png') center;
+	background-repeat: no-repeat;
+	background-size: contain;
+}
+#imgs > a{
+	transition:2s;
+}
+#imgs > a:hover{
+	transform:scale(1.5);
+}
+#etsyShop{
+	height:10vh;
+	width:10vh;
+	background: url('../imgs/Etsy-emblem.png') center;
+	background-repeat: no-repeat;
+	background-size: contain;
+	
+}
+
+.footer{
+	display:flex;
+	height:10vh;
+	flex-direction:column;
+	align-content:center;
+	justify-content:Center;
+	align-items:center;
+	font-family:'gss';
+	font-size:2.5vh;
+	user-select:none;
+	
+}
+.footer > *{
+	display:flex;
+	flex-direction:column;
+	align-content:center;
+	justify-content:Center;
+	color:rgb(.2,.2,.2);
+	text-decoration: none;
+	transition:2s;
+}
+.footer > a:hover{
+	transform:scale(1.2);
+}
+
+
