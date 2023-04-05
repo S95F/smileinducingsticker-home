@@ -15,11 +15,10 @@ body{
 	overflow:hidden;
 }
 #icon{
-	background: url('../imgs/Madness_cartoon_style_white_wall_covered_in_random_stickers_of__09cf3b17-209d-4832-9782-c60819eac52d.png') center;
+	background: url('../imgs/logo.png') center;
 	background-repeat: no-repeat;
 	background-size: contain;
 	width:10vh;
-	border-radius:216px;
 	margin-top:1vh;
 }
 
