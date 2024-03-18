@@ -1,0 +1,38 @@
+@media (max-width: 1000px) {
+  .app{
+	flex-direction:column;
+  }
+  .appItems:nth-child(1) {
+	max-height:8vh;
+  }
+  .appItems:nth-child(1) > h1{
+	line-height:8vh;
+  }
+  .appItems:nth-child(2){
+	min-width:100vw;
+	max-height:30vh;
+  }
+  .appItems:nth-child(4) {
+	flex-basis:40%;
+  }
+  .sb2{
+	min-height:20vh;
+	min-width:100vw;
+  }
+  .drag-bar{
+	min-height:5px;
+	width:100vw;
+  }
+  .innerBody{
+	color:white;
+  }
+  .imageContainer{
+	min-width:100vw;
+  }
+  .footer{
+	color:white;
+  }
+  .header{
+	color:white;
+  }
+}
