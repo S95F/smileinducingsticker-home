@@ -1,5 +1,5 @@
 
-const connection = require('../utils/dbpool.js');
+const pool = require('../utils/dbpool.js');
 const {getRandomImages} = require('../utils/generalUtils.js');
 
 const getTags = (socket, searchTerm, page = 1, pageSize = 10) => {
@@ -20,7 +20,7 @@ const getTags = (socket, searchTerm, page = 1, pageSize = 10) => {
         GROUP BY Images.ImageID
         LIMIT ? OFFSET ?`;
 
-   connection.query(query, [...tags, pageSize, offset], (error, results) => {
+   pool.query(query, [...tags, pageSize, offset], (error, results) => {
         if (error) {
             console.error('Error in query:', error);
             socket.emit('searchResults', { error: 'Error in query' });

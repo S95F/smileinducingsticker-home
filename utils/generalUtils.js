@@ -2,7 +2,7 @@
 var path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const connection = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 
 const batchSize = 100;
 var imageQueue = [];
@@ -18,9 +18,9 @@ function getRandomImages(clientImages, callback) {
   if (clientImages.length === 0) {
     query = 'SELECT ImageURL FROM images ORDER BY RAND() LIMIT 28'; // Fetch random images without filtering
   } else {
-    query = `SELECT ImageURL FROM images WHERE ImageURL NOT IN (${connection.escape(clientImages)}) ORDER BY RAND() LIMIT 28`;
+    query = `SELECT ImageURL FROM images WHERE ImageURL NOT IN (${pool.escape(clientImages)}) ORDER BY RAND() LIMIT 28`;
   }
-  connection.query(query, (err, results) => {
+  pool.query(query, (err, results) => {
     if (err) {
       callback(err, null);
       return;
@@ -62,14 +62,14 @@ function queueDirectory(directoryPath, rootParentDirectory) {
 
 function preprocessTagsAndInsert(data) {
   const allTags = [...new Set(data.flatMap(image => image.tags))];
-  connection.beginTransaction(err => {
+  pool.beginTransaction(err => {
     if (err) throw err;
-    connection.query('SELECT TagName FROM Tags WHERE TagName IN (?)', [allTags], (error, existingTags) => {
-      if (error) return connection.rollback(() => { throw error; });
+    pool.query('SELECT TagName FROM Tags WHERE TagName IN (?)', [allTags], (error, existingTags) => {
+      if (error) return pool.rollback(() => { throw error; });
       const newTags = allTags.filter(tag => !existingTags.map(t => t.TagName).includes(tag));
       if (newTags.length) {
-        connection.query('INSERT INTO Tags (TagName) VALUES ?', [newTags.map(tag => [tag])], error => {
-          if (error) return connection.rollback(() => { throw error; });
+        pool.query('INSERT INTO Tags (TagName) VALUES ?', [newTags.map(tag => [tag])], error => {
+          if (error) return pool.rollback(() => { throw error; });
           insertImages(data);
         });
       } else {
@@ -81,7 +81,7 @@ function preprocessTagsAndInsert(data) {
 function synchronizeImagesWithDatabase() {
   return new Promise((resolve, reject) => {
     const selectQuery = 'SELECT ImageURL FROM Images';
-    connection.query(selectQuery, (selectError, results) => {
+    pool.query(selectQuery, (selectError, results) => {
       if (selectError) {
         console.error('Error selecting images:', selectError);
         reject(selectError);
@@ -95,7 +95,7 @@ function synchronizeImagesWithDatabase() {
       }
       if (urlsToRemove.length > 0) {
         const deleteQuery = 'DELETE FROM Images WHERE ImageURL IN (?)';
-        connection.query(deleteQuery, [urlsToRemove], deleteError => {
+        pool.query(deleteQuery, [urlsToRemove], deleteError => {
           if (deleteError) {
             console.error('Error deleting old images:', deleteError);
             reject(deleteError);
@@ -111,13 +111,13 @@ function synchronizeImagesWithDatabase() {
 function insertImages(data) {
   const batch = data.splice(0, batchSize);
   batch.forEach(({ name, description, imageUrl, isPublic, tags }) => {
-    connection.query('INSERT INTO Images (Name, Description, ImageURL, Is_Public) VALUES (?, ?, ?, ?)', 
+    pool.query('INSERT INTO Images (Name, Description, ImageURL, Is_Public) VALUES (?, ?, ?, ?)', 
     [name, description || '', imageUrl, isPublic !== undefined ? isPublic : 1], (error, imageResults) => {
-      if (error) return connection.rollback(() => { throw error; });
+      if (error) return pool.rollback(() => { throw error; });
       tags.forEach(tag => {
-        connection.query('INSERT INTO Image_Tags (ImageID, TagID) SELECT ?, TagID FROM Tags WHERE TagName = ?', 
+        pool.query('INSERT INTO Image_Tags (ImageID, TagID) SELECT ?, TagID FROM Tags WHERE TagName = ?', 
         [imageResults.insertId, tag], error => {
-          if (error) return connection.rollback(() => { throw error; });
+          if (error) return pool.rollback(() => { throw error; });
         });
       });
     });
@@ -126,8 +126,8 @@ function insertImages(data) {
   if (data.length) {
     insertImages(data);
   } else {
-    connection.commit(err => {
-      if (err) return connection.rollback(() => { throw err; });
+    pool.commit(err => {
+      if (err) return pool.rollback(() => { throw err; });
       console.log(`Inserted ${batch.length} images with their tags.`);
       if (imageQueue.length > 0) preprocessTagsAndInsert(imageQueue.splice(0, batchSize));
     });

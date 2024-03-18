@@ -1,6 +1,6 @@
 const uuid = require('uuid'); 
 const {deleteExpiredSessions} = require('../utils/dbutil.js');
-const connection = require('../utils/dbpool.js');
+const pool = require('../utils/dbpool.js');
 
 const handleUserInfo = (socket) => {
   return (cbf) => {
@@ -24,7 +24,7 @@ const updateSessions = (socket, status, callback) => {
 	status = VALUES(status), cookie = VALUES(cookie), expire = NOW();
 	`;
     const values = [userId, status, uniqueCookie];
-    connection.query(query, values, (error, result) => {
+    pool.query(query, values, (error, result) => {
       if (error) {
         console.error('Error storing session data:', error);
         callback(false);
@@ -41,7 +41,7 @@ const getSessions = (socket,callback) => {
       WHERE userid = ? AND expire > NOW()
     `;
     const values = [userId];
-    connection.query(query, values, (error, results) => {
+    pool.query(query, values, (error, results) => {
       if (error) {
         console.error('Error fetching session data:', error);
         callback(false);

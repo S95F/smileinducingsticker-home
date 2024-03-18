@@ -1,14 +1,14 @@
 
 
 const bcrypt = require('bcrypt');
-const connection = require('../utils/dbpool.js');
+const pool = require('../utils/dbpool.js');
 
 
 
 
 function isValidLogin(email, password, callback) {
     const selectUserQuery = 'SELECT id, email, password, profPic, display_name, provider FROM users WHERE email = ? and provider = ?';
-    connection.query(selectUserQuery, [email,'self'], (error, results) => {
+    pool.query(selectUserQuery, [email,'self'], (error, results) => {
         if (error) {
             return callback(error, false);
         }
@@ -38,7 +38,7 @@ function deleteExpiredSessions(userId, callback) {
   const deleteValues = [userId];
 
   // Execute the delete query with a callback
-  connection.query(deleteQuery, deleteValues, (error, result) => {
+  pool.query(deleteQuery, deleteValues, (error, result) => {
     if (error) {
       console.error('Error deleting expired sessions:', error);
     }
