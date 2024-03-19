@@ -19,8 +19,6 @@ const TWITCH_SECRET    = myauthobj.twitch.secret;
 
 app.use(express.json({ limit: '1000mb' }));
 
-const connection = require('./utils/dbpool.js');
-
 const {addUserIfNotFound} = require('./utils/db_user_util.js');
 const {generateRandomSecret, getRandomImages, queueDirectory, preprocessTagsAndInsert, synchronizeImagesWithDatabase, insertImages} = require('./utils/generalUtils.js');
 const {isValidLogin, deleteExpiredSessions} = require('./utils/dbutil.js');
