@@ -2,7 +2,9 @@
 var path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const {pool} = require('../utils/dbpool.js');
+const {pool,imagepool} = require('../utils/dbpool.js');
+const { v4: uuidv4 } = require('uuid');
+
 
 const batchSize = 100;
 var imageQueue = [];
@@ -16,7 +18,7 @@ const generateRandomSecret = () => {
 function getRandomImages(clientImages, callback) {
   let query;
   if (clientImages.length === 0) {
-    query = 'SELECT ImageURL FROM images ORDER BY RAND() LIMIT 28'; // Fetch random images without filtering
+    query = 'SELECT ImageURL FROM images ORDER BY RAND() LIMIT 28'; 
   } else {
     query = `SELECT ImageURL FROM images WHERE ImageURL NOT IN (${pool.escape(clientImages)}) ORDER BY RAND() LIMIT 28`;
   }
@@ -50,7 +52,7 @@ function queueDirectory(directoryPath, rootParentDirectory) {
       const imageData = {
         name: text,
         description: '',
-        imageUrl: decodeURI(relativeImageUrl).replace('/','\\').slice(9),
+        imageUrl: decodeURI(relativeImageUrl).replace('/','\\'),
         isPublic: 1, 
         tags: [parentDir]
       };
@@ -61,23 +63,52 @@ function queueDirectory(directoryPath, rootParentDirectory) {
 }
 
 function preprocessTagsAndInsert(data) {
-  const allTags = [...new Set(data.flatMap(image => image.tags))];
-  pool.beginTransaction(err => {
-    if (err) throw err;
-    pool.query('SELECT TagName FROM Tags WHERE TagName IN (?)', [allTags], (error, existingTags) => {
-      if (error) return pool.rollback(() => { throw error; });
-      const newTags = allTags.filter(tag => !existingTags.map(t => t.TagName).includes(tag));
-      if (newTags.length) {
-        pool.query('INSERT INTO Tags (TagName) VALUES ?', [newTags.map(tag => [tag])], error => {
-          if (error) return pool.rollback(() => { throw error; });
-          insertImages(data);
-        });
-      } else {
-        insertImages(data);
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      throw err; // or handle this error appropriately
+    }
+
+    connection.beginTransaction(err => {
+      if (err) {
+        console.error('Error starting transaction:', err);
+        connection.release();
+        throw err; // or handle this error appropriately
       }
+
+      const allTags = [...new Set(data.flatMap(image => image.tags))];
+      connection.query('SELECT TagName FROM Tags WHERE TagName IN (?)', [allTags], (error, existingTags) => {
+        if (error) {
+          console.error('Error executing query:', error);
+          return connection.rollback(() => {
+            connection.release();
+            throw error; // or handle this error appropriately
+          });
+        }
+
+        const newTags = allTags.filter(tag => !existingTags.map(t => t.TagName).includes(tag));
+        if (newTags.length) {
+          connection.query('INSERT INTO Tags (TagName) VALUES ?', [newTags.map(tag => [tag])], error => {
+            if (error) {
+              console.error('Error executing insert tags query:', error);
+              return connection.rollback(() => {
+                connection.release();
+                throw error; // or handle this error appropriately
+              });
+            }
+            insertImages(data, connection);
+          });
+        } else {
+          insertImages(data, connection);
+        }
+      });
     });
   });
 }
+
+
+
+
 function synchronizeImagesWithDatabase() {
   return new Promise((resolve, reject) => {
     const selectQuery = 'SELECT ImageURL FROM Images';
@@ -108,32 +139,80 @@ function synchronizeImagesWithDatabase() {
   });
 }
 
-function insertImages(data) {
+function insertImages(data, connection) {
+  if (data.length === 0) {
+    // Commit the transaction if there are no more images to insert
+    connection.commit(err => {
+      if (err) {
+        console.error('Error committing transaction:', err);
+        return connection.rollback(() => {
+          connection.release();
+          // Handle error - problem during commit
+        });
+      }
+      connection.release();
+      console.log('Transaction complete, connection released.');
+      // Handle success
+    });
+    return;
+  }
+
   const batch = data.splice(0, batchSize);
+  const insertImageQuery = 'INSERT INTO Images (Name, Description, ImageURL, Is_Public) VALUES (?, ?, ?, ?)';
+
   batch.forEach(({ name, description, imageUrl, isPublic, tags }) => {
-    pool.query('INSERT INTO Images (Name, Description, ImageURL, Is_Public) VALUES (?, ?, ?, ?)', 
-    [name, description || '', imageUrl, isPublic !== undefined ? isPublic : 1], (error, imageResults) => {
-      if (error) return pool.rollback(() => { throw error; });
+    connection.query(insertImageQuery, [name, description || '', imageUrl, isPublic !== undefined ? isPublic : 1], (error, imageResults) => {
+      if (error) {
+        console.error('Error inserting image:', error);
+        return connection.rollback(() => {
+          connection.release();
+          // Handle error - problem during image insert
+        });
+      }
+
       tags.forEach(tag => {
-        pool.query('INSERT INTO Image_Tags (ImageID, TagID) SELECT ?, TagID FROM Tags WHERE TagName = ?', 
-        [imageResults.insertId, tag], error => {
-          if (error) return pool.rollback(() => { throw error; });
+        const insertTagQuery = 'INSERT INTO Image_Tags (ImageID, TagID) SELECT ?, TagID FROM Tags WHERE TagName = ?';
+        connection.query(insertTagQuery, [imageResults.insertId, tag], error => {
+          if (error) {
+            console.error('Error inserting image tag:', error);
+            return connection.rollback(() => {
+              connection.release();
+              // Handle error - problem during tag insert
+            });
+          }
         });
       });
     });
   });
 
-  if (data.length) {
-    insertImages(data);
-  } else {
-    pool.commit(err => {
-      if (err) return pool.rollback(() => { throw err; });
-      console.log(`Inserted ${batch.length} images with their tags.`);
-      if (imageQueue.length > 0) preprocessTagsAndInsert(imageQueue.splice(0, batchSize));
-    });
-  }
+  // Recursively call insertImages for the next batch of data
+  insertImages(data, connection);
 }
 
+function processImageQueue() {
+    imageQueue.forEach(imageData => {
+        const { name, imageUrl } = imageData;
+        const uuid = uuidv4();
+        const fileExtension = path.extname(imageUrl);
+        const imageName = path.basename(imageUrl);
+        const newFilePath = path.join(__dirname, '..', 'public', 'imglib', `${uuid}${fileExtension}`);
+		
+        const decodedImageUrl = decodeURI(imageUrl);
+        const fullImageUrl = imageUrl.startsWith('public') ? imageUrl : path.join('public', imageUrl);
+        if (fs.existsSync(fullImageUrl)) {
+            try {
+                fs.renameSync(fullImageUrl, newFilePath);
+                imageData.name = uuid;
+                imageData.imageUrl = path.join('imglib', `${uuid}${fileExtension}`);
+                console.log(`Image moved successfully to: ${newFilePath}`);
+            } catch (error) {
+                console.error(`Error moving image: ${error.message}`);
+            }
+        } else {
+            console.error(`File not found: ${fullImageUrl}`);
+        }
+    });
+}
 
 
 module.exports = {
@@ -142,5 +221,6 @@ module.exports = {
 	queueDirectory,
 	preprocessTagsAndInsert,
 	synchronizeImagesWithDatabase,
-	insertImages
+	insertImages,
+	processImageQueue,
 };

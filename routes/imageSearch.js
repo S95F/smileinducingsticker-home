@@ -1,5 +1,5 @@
 
-const pool = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 const {getRandomImages} = require('../utils/generalUtils.js');
 
 const getTags = (socket, searchTerm, page = 1, pageSize = 10) => {

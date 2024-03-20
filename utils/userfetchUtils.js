@@ -1,7 +1,7 @@
 
 const axios = require('axios');
-
-
+const myauthobj = require('../ignore/auth.js'),TWITCH_CLIENT_ID = myauthobj.twitch.cid,TWITCH_SECRET = myauthobj.twitch.secret;
+const { addUserIfNotFound } = require('../utils/db_user_util');
 
 
 function fetchTwitchProfile(accessToken, refreshToken, profile, done) {

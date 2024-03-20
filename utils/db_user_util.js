@@ -1,35 +1,55 @@
 
 
 
-const pool = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 
 
-function synchronizeImagesWithDatabase() {
-  return new Promise((resolve, reject) => {
-    const selectQuery = 'SELECT ImageURL FROM Images';
-    pool.query(selectQuery, (selectError, results) => {
-      if (selectError) {
-        console.error('Error selecting images:', selectError);
-        reject(selectError);
+
+
+
+function addUserIfNotFound(user, callback) {
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      callback(err);
+      return;
+    }
+
+    const checkUserQuery = 'SELECT id FROM users WHERE email = ? AND provider = ?';
+    connection.query(checkUserQuery, [user.email, user.provider], (error, results) => {
+      if (error) {
+        console.error('Error checking user existence:', error);
+        connection.release();
+        callback(error);
         return;
       }
-      const existingImageUrls = new Set(results.map(row => row.ImageURL));
-      const urlsToRemove = Array.from(existingImageUrls).filter(url => !imageQueue.some(imageData => imageData.imageUrl === url));
-      imageQueue = imageQueue.filter(imageData => !existingImageUrls.has(imageData.imageUrl));
-      if (imageQueue.length > 0) {
-        preprocessTagsAndInsert(imageQueue);
+
+      if (results.length > 0) {
+        // User already exists
+        connection.release();
+        callback('User already exists');
+        return;
       }
-      if (urlsToRemove.length > 0) {
-        const deleteQuery = 'DELETE FROM Images WHERE ImageURL IN (?)';
-        pool.query(deleteQuery, [urlsToRemove], deleteError => {
-          if (deleteError) {
-            console.error('Error deleting old images:', deleteError);
-            reject(deleteError);
-            return;
-          }
-        });
-      }
-      resolve();
+
+      const insertUserQuery = 'INSERT INTO users SET ?';
+      connection.query(insertUserQuery, user, (insertError) => {
+        connection.release();
+        if (insertError) {
+          console.error('Error inserting user:', insertError);
+          callback(insertError);
+          return;
+        }
+
+        callback(null); // Success
+      });
     });
   });
+}
+
+
+
+
+module.exports = {
+	addUserIfNotFound,
+	
 }

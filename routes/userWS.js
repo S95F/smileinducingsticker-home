@@ -1,6 +1,6 @@
 const uuid = require('uuid'); 
 const {deleteExpiredSessions} = require('../utils/dbutil.js');
-const pool = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 
 const handleUserInfo = (socket) => {
   return (cbf) => {
