@@ -2,7 +2,7 @@
 
 import {dotheSlide, onResize, scrollTo} from './slide.js'
 import {validateForm} from './formUtil/validateForm.js';
-import {setCookie} from './formUtil/setCookie.js';
+import {setCookie} from './generalUtil/setCookie.js';
 export const creatorHelpers = {};
 
 
