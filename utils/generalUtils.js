@@ -195,8 +195,7 @@ function processImageQueue() {
         const uuid = uuidv4();
         const fileExtension = path.extname(imageUrl);
         const imageName = path.basename(imageUrl);
-        const newFilePath = path.join(__dirname, '..', 'public', 'imglib', `${uuid}${fileExtension}`);
-		
+        const newFilePath = path.join(__dirname, '..', 'public', 'imglib', `${uuid}${fileExtension}`);		
         const decodedImageUrl = decodeURI(imageUrl);
         const fullImageUrl = imageUrl.startsWith('public') ? imageUrl : path.join('public', imageUrl);
         if (fs.existsSync(fullImageUrl)) {

@@ -42,11 +42,6 @@ body{
 	margin:0;
 	font-family:'gss';
 }
-.logo{
-	background-image:url('../imgs/logo.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-}
 .container{
 	position:relative;
 	display:flex;

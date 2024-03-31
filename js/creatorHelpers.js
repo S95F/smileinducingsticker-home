@@ -3,6 +3,7 @@
 import {dotheSlide, onResize, scrollTo} from './slide.js'
 import {validateForm} from './formUtil/validateForm.js';
 import {setCookie} from './generalUtil/setCookie.js';
+import {addClickListenerToImageContainers} from './generalUtil/addClickListenerToImageContainers.js';
 export const creatorHelpers = {};
 
 
@@ -12,18 +13,18 @@ creatorHelpers.validateForm = validateForm;
 creatorHelpers.setCookie = setCookie;
 
 creatorHelpers.init = function(){
+	creatorHelpers.socket = io({
+		autoConnect: true
+	}).connect();
 	scrollTo(0,0);
 	creatorHelpers.sideBar = document.getElementById('sideBar');
 	creatorHelpers.appBody = document.getElementById('appBody');
 	document.getElementById("signUpbtn").onclick = creatorHelpers.validateForm;
 	const signInbtn = document.getElementById('signinbtn');
 	signInbtn.onclick = function(event) {
-		event.preventDefault(); // Prevent the default form submission
-
-		// Get input values
+		event.preventDefault(); 
 		const email = document.getElementById('emailSignin').value.trim();
 		const password = document.getElementById('passwordSignin').value;
-		// Send a POST request to the server for login
 		fetch('/login', {
 		  method: 'POST',
 		  headers: {
@@ -37,10 +38,8 @@ creatorHelpers.init = function(){
 		})
 		.then(response => {
 		  if (response.redirected) {
-			// Login was successful, you can redirect or perform other actions as needed
 			window.location.href = response.url;
 		  } else {
-			// Login failed, display an error message
 			alert('Login failed. Please check your email and password.');
 		  }
 		})
@@ -68,35 +67,21 @@ creatorHelpers.init = function(){
 	const searchParams = new URLSearchParams(queryString);
 	const authValue = searchParams.get('auth');
 	if (authValue === 'true') {
-	  creatorHelpers.socket.app = {};
-	  creatorHelpers.socket.emit("userInfo",(res) => {
-			if(res!=false){
-				dotheSlide(2,0);
-				creatorHelpers.socket.user = res;
-				document.getElementById("welcome").innerHTML = "Welcome " + creatorHelpers.socket.user.display_name + "!";
-				if(creatorHelpers.socket.user.profPic == ''){
-					creatorHelpers.socket.user.profPic = './imgs/profile.png';
+		creatorHelpers.socket.app = {};
+		creatorHelpers.socket.on('connect', () => {
+			creatorHelpers.socket.emit("userInfo",(res) => {
+				console.log(res);
+				if(res){
+					const headerRightButtons = document.getElementById('headerRightButtons');
+					headerRightButtons.innerHTML = '';
+					const divElement = document.createElement('div');
+					divElement.classList.add('inputWrapper');
+					divElement.appendChild(document.createTextNode('Welcome! ' + res.display_name));
+					headerRightButtons.appendChild(divElement);
+				}else if(res==false){
+					window.location.ref = '/';
 				}
-				var uProf = document.getElementById("uProf");
-				uProf.style.background = "url('" + creatorHelpers.socket.user.profPic + "') center";
-				uProf.style.backgroundRepeat = "no-repeat";
-				uProf.style.backgroundSize = "contain";
-				creatorHelpers.socket.emit('user:getSession', (result) => {
-					if (!result) {
-					  creatorHelpers.socket.emit('user:sessionUpdate', "appLanding", (result) => {
-						creatorHelpers.setCookie(result);  
-					  });
-					} else if (result === "appLanding") {
-					  console.log("appLanding");	
-					} else if (result === "designing") {
-					  dotheSlide(3, 0);
-					  console.log(result);
-					}
-				});
-			}else{
-				dotheSlide(0,0);
-				window.location.href = '/';
-			}
+			  });
 		  });
 	}
 	updatePercentageValues();
@@ -189,6 +174,29 @@ creatorHelpers.init = function(){
 	  }
 	});
 	window.addEventListener('resize', updatePercentageValues);
+	const mainBody = document.querySelector('.mainBody');
+	const imageContainer = mainBody.querySelector('.imageContainer');
+	const loadMoreBtn = mainBody.querySelector('#loadMoreBtn');
+	let receivedImages = [];
+	creatorHelpers.socket.on('randomImages', (images) => {
+		images.forEach((image) => {
+			if (!receivedImages.includes(image.ImageURL)) {
+				const img = document.createElement('img');
+				const div = document.createElement('div');
+				img.src = image.ImageURL;
+				div.appendChild(img);
+				div.dataset.imageContainer = '';
+				imageContainer.appendChild(div);
+				receivedImages.push(image.ImageURL);
+			}
+		});
+	});
+	loadMoreBtn.addEventListener('click', loadMoreImages);
+	function loadMoreImages() {
+		creatorHelpers.socket.emit('getRandomImages', receivedImages);
+	}
+	loadMoreImages();
+	addClickListenerToImageContainers();
 
 }
 

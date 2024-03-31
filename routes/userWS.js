@@ -2,14 +2,12 @@ const uuid = require('uuid');
 const {deleteExpiredSessions} = require('../utils/dbutil.js');
 const {pool} = require('../utils/dbpool.js');
 
-const handleUserInfo = (socket) => {
-  return (cbf) => {
-    if (socket.handshake.session.passport) {
-      cbf(socket.handshake.session.passport.user);
-    } else {
-      cbf(false);
-    }
-  };
+const handleUserInfo = (socket, cbf) => {
+  if (socket.request.session.passport) {
+    cbf(socket.request.session.passport.user);
+  } else {
+    cbf(false);
+  }
 };
 
 

@@ -4,11 +4,13 @@ const {pool} = require('../utils/dbpool.js');
 
 
 const activities = {
-    editor: { permission_level: 1 }, 
-    upload: { permission_level: 2 },
-    admin: { permission_level: 3 }
+    userInfo: { permission_level: 1, requiresAuth: false },
+    sessionUpdate: { permission_level: 1, requiresAuth: true },
+    getSession: { permission_level: 1, requiresAuth: true },
+    searchTags: { permission_level: 1, requiresAuth: false },
+    getRandomImages: { permission_level: 1, requiresAuth: false },
+    uploadImages: { permission_level: 1, requiresAuth: false }
 };
-
 
 const checkPermissions = async (socket, next) => {
     try {
@@ -54,10 +56,41 @@ const getUserPermissions = async (userId) => {
 };
 
 
-
+function registerEvent(socket, eventName, handler) {
+    return async (...args) => {
+        try {
+			console.log(eventName);
+            const activity = activities[eventName];
+            console.log(activity);
+            if (!activity || !activity.requiresAuth) {
+                return handler(socket, ...args);
+            }
+            if (!socket.handshake.session?.passport?.user) {
+				console.log('auth_error: ', socket.handshake);
+                socket.emit('auth_error', 'Authentication required');
+                return;
+            }
+            const user = socket.handshake.session.passport.user;
+            const userPermissions = await getUserPermissions(user.id);
+            const hasPermission = userPermissions.some(permission => permission.permission_level >= activity.permission_level);
+            console.log(hasPermission);
+            if (!hasPermission) {
+				console.log('perm_error');
+                socket.emit('permission_error', 'Insufficient permissions');
+                return;
+            }
+            return handler(socket, ...args);
+        } catch (error) {
+            console.error(`Error in registerEvent for ${eventName}:`, error);
+            socket.emit('server_error', 'Internal Server Error');
+            return;
+        }
+    };
+}
 
 
 module.exports = {
 	checkPermissions,
 	activities,
+	registerEvent,
 }

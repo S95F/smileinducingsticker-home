@@ -21,18 +21,27 @@ const {handleUserInfo,updateSessions,getSessions} = require('./routes/userWS.js'
 const {getTags,getRandomImagesSocket} = require('./routes/imageSearch.js');
 const {fetchGoogleProfile,fetchTwitchProfile} = require('./utils/userfetchUtils.js');
 const {pool} = require('./utils/dbpool.js');
+const {handleFileUpload} = require('./utils/handleFileUpload.js');
 const SESSION_SECRET = generateRandomSecret(), CALLBACK_URL = 'http://localhost/auth/twitch/callback', googleCredentials = JSON.parse(fs.readFileSync('./auth/google.json')), CALLBACK_URL_GOOGLE = 'http://localhost/auth/google/callback/';
 const sessionMiddleware = session({
     secret: SESSION_SECRET, 
-    resave: false, 
+    resave: true, 
     saveUninitialized: false
 });
-const {checkPermissions,activities} = require('./routes/permissions.js');
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+});
+const {registerEvent} = require('./routes/permissions.js');
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static('public'));app.use(express.urlencoded({ extended: true }));
-passport.serializeUser(function(user, done) {done(null, user);});passport.deserializeUser(function(user, done) {done(null, user);});
+passport.serializeUser(function(user, done) {
+	done(null, user);
+});
+passport.deserializeUser(function(user, done) {
+	done(null, user);
+});
 passport.use('twitch', new OAuth2Strategy({authorizationURL: 'https://id.twitch.tv/oauth2/authorize',tokenURL: 'https://id.twitch.tv/oauth2/token',clientID: TWITCH_CLIENT_ID,clientSecret: TWITCH_SECRET,callbackURL: CALLBACK_URL,state: true},fetchTwitchProfile));
 app.get('/auth/twitch', passport.authenticate('twitch', { scope: 'user_read' }));
 app.get('/auth/twitch/callback',passport.authenticate('twitch', { failureRedirect: '/fail' }),(req, res) => {res.redirect('/?auth=true');});
@@ -41,27 +50,13 @@ app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'em
 app.get('/auth/google/callback/',passport.authenticate('google', { failureRedirect: '/fail' }),(req, res) => {res.redirect('/?auth=true');});
 app.post('/register', registerUser);app.post('/login', loginUser);
 var htmlPath = path.join(__dirname, 'public');console.log(htmlPath);
-io.use(async (socket, next) => {
-    try {
-        if (!socket.handshake.session.passport || !socket.handshake.session.passport.user) {
-            throw new Error('User not authenticated');
-        }
-        const user = socket.handshake.session.passport.user;
-        if (!user.permissions || user.permissions.length === 0) {
-            throw new Error('No permissions assigned');
-        }
-        // ...existing permission check logic...
-    } catch (error) {
-        console.error('Error in middleware:', error);
-        socket.emit('server_error', 'Internal Server Error');
-    }
-});
 io.on('connection', (socket) => {
-  socket.on("userInfo",() => handleUserInfo(socket));
-  socket.on('user:sessionUpdate', (status,callback) => updateSessions(socket,status,callback));
-  socket.on('user:getSession', (callback) => getSessions(socket,callback));
-  socket.on('searchTags', (searchTerm,page,pageSize) => getTags(socket,searchTerm,page,pageSize));
-  socket.on('getRandomImages', (receivedImages) => getRandomImagesSocket(socket,receivedImages));
+    socket.on("userInfo", registerEvent(socket, "userInfo", handleUserInfo));
+    socket.on('user:sessionUpdate', registerEvent(socket, "user:sessionUpdate", updateSessions));
+    socket.on('user:getSession', registerEvent(socket, "user:getSession", getSessions));
+    socket.on('searchTags', registerEvent(socket, "searchTags", getTags));
+    socket.on('getRandomImages', registerEvent(socket, "getRandomImages", getRandomImagesSocket));
+    socket.on('uploadImages', registerEvent(socket, "uploadImages", handleFileUpload));
 });
 app.use(serveStatic(htmlPath));
 server.listen(80);
