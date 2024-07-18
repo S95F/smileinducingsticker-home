@@ -29,7 +29,7 @@ const sessionMiddleware = session({
     resave: true, 
     saveUninitialized: false
 });
-exportDB();
+validateDB();
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
