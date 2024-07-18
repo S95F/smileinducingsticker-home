@@ -1,7 +1,7 @@
 
 
 const bcrypt = require('bcrypt');
-const pool = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 
 
 

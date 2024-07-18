@@ -48,13 +48,23 @@ creatorHelpers.init = function(){
 		  alert('An error occurred while processing your request. Please try again later.');
 		})
 	};
-	function signIn(){
-		dotheSlide(1,0);
-	}
 	function signUp(){
 		dotheSlide(1,1);
 	}
-	document.getElementById("signinHeader").onclick = signIn;
+	document.getElementById("signinHeader").onclick = function () {
+		var targetPosition = document.getElementById("signIn").getBoundingClientRect().top + window.pageYOffset;
+		var container = document.querySelector('.container');
+		container.style.overflow = 'clip';
+		container.scrollTop = 0;
+		document.getElementById('signIn').style.overflow = 'visible';
+		dotheSlide(1, 0, function () {
+			window.scrollTo({
+				top: targetPosition,
+				behavior: 'smooth'
+			});
+			
+		});
+	};
 	document.getElementById("signupbtn").onclick = signUp;
 	document.getElementById("twitchsignbtn").onclick = function() {
       window.location.href = '/auth/twitch';
@@ -70,7 +80,6 @@ creatorHelpers.init = function(){
 		creatorHelpers.socket.app = {};
 		creatorHelpers.socket.on('connect', () => {
 			creatorHelpers.socket.emit("userInfo",(res) => {
-				console.log(res);
 				if(res){
 					const headerRightButtons = document.getElementById('headerRightButtons');
 					headerRightButtons.innerHTML = '';
@@ -78,6 +87,7 @@ creatorHelpers.init = function(){
 					divElement.classList.add('inputWrapper');
 					divElement.appendChild(document.createTextNode('Welcome! ' + res.display_name));
 					headerRightButtons.appendChild(divElement);
+					creatorHelpers.socket.emit("user:getSession", (res) => console.log(res));
 				}else if(res==false){
 					window.location.ref = '/';
 				}

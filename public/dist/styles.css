@@ -236,23 +236,27 @@ input[type="email"] {
 	flex-wrap:none;
 	justify-content:center;
 	align-content:center;
+	font-size: min(3vw,3vh);
+    transition: 1s;
+    margin-right: min(2vw, 2vh);
+    margin-top:min(2vw,2vh);
 }
 .inputWrapper::before{
 	content:'||';
 	color:black;
 	font-family:"gss";
 	font-size:min(3vw,3vh);
-	margin-right:min(2vw,2vh);
+	margin-right:min(3vw,3vh);
 	align-self:center;
 }
 .inputWrapper > input[type="button"]{
 	border:none;
 	background:none;
 	color:black;
-	font-family:'gss';
-	font-size:min(3vw,3vh);
-	transition:1s;
-	margin-right:min(2vw,2vh);
+	font-family:inherit;
+	font-size:inherit;
+	transition:inherit;
+	margin-right:inherit;
 }
 .inputWrapper > input[type="button"]:hover{
 	transform:scale(1.2);

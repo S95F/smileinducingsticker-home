@@ -33,7 +33,7 @@ const updateSessions = (socket, status, callback) => {
 }
 
 const getSessions = (socket,callback) => {
-	const userId = socket.handshake.session.passport.user.id;
+	const userId = socket.request.session.passport.user.id;
     const query = `
       SELECT cookie, status FROM user_sessions
       WHERE userid = ? AND expire > NOW()

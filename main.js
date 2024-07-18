@@ -19,6 +19,7 @@ const {registerUser} = require('./routes/regUser.js');
 const {loginUser} = require('./routes/loginUser.js');
 const {handleUserInfo,updateSessions,getSessions} = require('./routes/userWS.js');
 const {getTags,getRandomImagesSocket} = require('./routes/imageSearch.js');
+const {  getDBtoJSON,exportDB,validateDB} = require('./utils/databaseUtilities.js');
 const {fetchGoogleProfile,fetchTwitchProfile} = require('./utils/userfetchUtils.js');
 const {pool} = require('./utils/dbpool.js');
 const {handleFileUpload} = require('./utils/handleFileUpload.js');
@@ -28,6 +29,7 @@ const sessionMiddleware = session({
     resave: true, 
     saveUninitialized: false
 });
+exportDB();
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
