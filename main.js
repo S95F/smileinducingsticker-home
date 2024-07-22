@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
     socket.on('uploadImages', registerEvent(socket, "uploadImages", handleFileUpload));
 });
 app.use(serveStatic(htmlPath));
-server.listen(80);
+server.listen();
 queueDirectory('./public/imglib','./public/');
 synchronizeImagesWithDatabase().then(() => {console.log('Image synchronization complete.');}).catch(error => console.log('Error during image synchronization:', error));
 
