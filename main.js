@@ -42,7 +42,6 @@ const sessionMiddleware = session({
     saveUninitialized: false
 });
 
-validateDB();
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
@@ -106,10 +105,6 @@ io.on('connection', (socket) => {
 
 app.use(serveStatic(htmlPath));
 server.listen();
-queueDirectory('./public/imglib', './public/');
-synchronizeImagesWithDatabase().then(() => {
-    console.log('Image synchronization complete.');
-}).catch(error => console.log('Error during image synchronization:', error));
 
 // Logging mechanism to redirect console output to a file
 const logFile = fs.createWriteStream(path.join(__dirname, 'server.log'), { flags: 'a' });
@@ -121,6 +116,31 @@ console.log = function (message) {
 };
 
 console.error = function (message) {
-    logFile.write(new Date().toISOString() + " - ERROR: " + message + '\n');
-    logStdout.write(new Date().toISOString() + " - ERROR: " + message + '\n');
+    logFile.write(new Date().toISOString() + " - " + message + '\n');
+    logStdout.write(new Date().toISOString() + " - " + message + '\n');
 };
+
+
+function validateDatabase() {
+    return new Promise((resolve, reject) => {
+        try {
+            validateDB();
+            resolve();
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+validateDatabase()
+    .then(() => {
+		queueDirectory('./public/imglib', './public/');
+        console.log('Database validation complete.');
+        return synchronizeImagesWithDatabase();
+    })
+    .then(() => {
+        console.log('Image synchronization complete.');
+    })
+    .catch(error => {
+        console.error('Error during validation or synchronization:', error);
+    });
