@@ -1,7 +1,7 @@
 var express = require('express');
 const fs = require('fs');
 const path = require('path');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 var serveStatic = require('serve-static');
 const uuid = require('uuid');
 var app = express();
@@ -36,10 +36,12 @@ const SESSION_SECRET = generateRandomSecret(),
       googleCredentials = JSON.parse(fs.readFileSync('./auth/google.json')),
       CALLBACK_URL_GOOGLE = 'http://localhost/auth/google/callback/';
 
-const sessionMiddleware = session({
-    secret: SESSION_SECRET,
-    resave: true,
-    saveUninitialized: false
+const sessionMiddleware = cookieSession({
+    name: 'session',
+    keys: [SESSION_SECRET],
+
+    // Cookie Options
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
 });
 
 io.use((socket, next) => {
@@ -91,8 +93,6 @@ app.get('/auth/google/callback/', passport.authenticate('google', { failureRedir
 app.post('/register', registerUser);
 app.post('/login', loginUser);
 
-var htmlPath = path.join(__dirname, 'public');
-console.log(htmlPath);
 
 io.on('connection', (socket) => {
     socket.on("userInfo", registerEvent(socket, "userInfo", handleUserInfo));
@@ -103,8 +103,7 @@ io.on('connection', (socket) => {
     socket.on('uploadImages', registerEvent(socket, "uploadImages", handleFileUpload));
 });
 
-app.use(serveStatic(htmlPath));
-server.listen();
+
 
 // Logging mechanism to redirect console output to a file
 const logFile = fs.createWriteStream(path.join(__dirname, 'server.log'), { flags: 'a' });
@@ -140,6 +139,10 @@ validateDatabase()
     })
     .then(() => {
         console.log('Image synchronization complete.');
+        var htmlPath = path.join(__dirname, 'public');
+		console.log(htmlPath);
+        app.use(serveStatic(htmlPath));
+		server.listen();
     })
     .catch(error => {
         console.error('Error during validation or synchronization:', error);
