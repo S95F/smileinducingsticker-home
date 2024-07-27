@@ -1,7 +1,7 @@
 var express = require('express');
 const fs = require('fs');
 const path = require('path');
-const cookieSession = require('cookie-session');
+const session = require('express-session');
 var serveStatic = require('serve-static');
 const uuid = require('uuid');
 var app = express();
@@ -10,8 +10,7 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 var passport = require("passport");
-var OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
-const expressSession = require('express-socket.io-session');
+var OAuth2Strategy = require('passport-oauth2').Strategy;
 app.use(express.json({ limit: '1000mb' }));
 
 const myauthobj = require('./ignore/auth.js'),
@@ -36,16 +35,18 @@ const SESSION_SECRET = generateRandomSecret(),
       googleCredentials = JSON.parse(fs.readFileSync('./auth/google.json')),
       CALLBACK_URL_GOOGLE = 'http://localhost/auth/google/callback/';
 
-const sessionMiddleware = cookieSession({
-    name: 'session',
-    keys: [SESSION_SECRET],
+let sessionMiddleware;
 
-    // Cookie Options
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+// Use in-memory session store
+sessionMiddleware = session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 });
 
 io.use((socket, next) => {
-  sessionMiddleware(socket.request, {}, next);
+    sessionMiddleware(socket.request, {}, next);
 });
 
 const { registerEvent } = require('./routes/permissions.js');
@@ -91,8 +92,22 @@ app.get('/auth/google/callback/', passport.authenticate('google', { failureRedir
 });
 
 app.post('/register', registerUser);
-app.post('/login', loginUser);
+app.post('/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) { return next(err); }
+        if (!user) { return res.redirect('/login'); }
 
+        // Regenerate session to prevent session fixation
+        req.session.regenerate((err) => {
+            if (err) { return next(err); }
+
+            req.login(user, (err) => {
+                if (err) { return next(err); }
+                return res.redirect('/');
+            });
+        });
+    })(req, res, next);
+});
 
 io.on('connection', (socket) => {
     socket.on("userInfo", registerEvent(socket, "userInfo", handleUserInfo));
@@ -102,8 +117,6 @@ io.on('connection', (socket) => {
     socket.on('getRandomImages', registerEvent(socket, "getRandomImages", getRandomImagesSocket));
     socket.on('uploadImages', registerEvent(socket, "uploadImages", handleFileUpload));
 });
-
-
 
 // Logging mechanism to redirect console output to a file
 const logFile = fs.createWriteStream(path.join(__dirname, 'server.log'), { flags: 'a' });
@@ -119,7 +132,6 @@ console.error = function (message) {
     logStdout.write(new Date().toISOString() + " - " + message + '\n');
 };
 
-
 function validateDatabase() {
     return new Promise((resolve, reject) => {
         try {
@@ -133,16 +145,16 @@ function validateDatabase() {
 
 validateDatabase()
     .then(() => {
-		queueDirectory('./public/imglib', './public/');
+        queueDirectory('./public/imglib', './public/');
         console.log('Database validation complete.');
         return synchronizeImagesWithDatabase();
     })
     .then(() => {
         console.log('Image synchronization complete.');
         var htmlPath = path.join(__dirname, 'public');
-		console.log(htmlPath);
+        console.log(htmlPath);
         app.use(serveStatic(htmlPath));
-		server.listen();
+        server.listen(80);
     })
     .catch(error => {
         console.error('Error during validation or synchronization:', error);

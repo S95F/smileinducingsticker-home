@@ -79,7 +79,7 @@ function validateDB() {
                 results.dbJson = dbJson;
 
                 const dKeys = Object.keys(results.data.storedProcedures);
-                const bKeys = Object.keys(results.dbJson.storedProcedures);
+                const bKeys = dbJson==undefined?undefined:Object.keys(results.dbJson.storedProcedures);
                 let OFKsp = [];
                 for (let i in dKeys) {
                     if (results.data.storedProcedures[dKeys[i]] !== results.dbJson.storedProcedures[bKeys[i]]) {
@@ -88,7 +88,7 @@ function validateDB() {
                 }
 
                 const cKeys = Object.keys(results.data.tables);
-                const aKeys = Object.keys(results.dbJson.tables);
+                const aKeys = dbJson==undefined||dbJson.tables==undefined?undefined:Object.keys(results.dbJson.tables);
                 let OFKtb = [];
                 for (let i in cKeys) {
                     if (results.data.tables[cKeys[i]] !== results.dbJson.tables[aKeys[i]]) {

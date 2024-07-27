@@ -2,7 +2,7 @@
 var path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const {pool,imagepool} = require('../utils/dbpool.js');
+const {pool} = require('../utils/dbpool.js');
 const { v4: uuidv4 } = require('uuid');
 
 
